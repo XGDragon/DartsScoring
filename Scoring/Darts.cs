@@ -18,6 +18,8 @@ namespace Scoring
         private Player[] players = new Player[MAX_PLAYERS];
         private List<Player> _activePlayers = new List<Player>();
         public List<Player> ActivePlayers { get { return _activePlayers; } }
+        
+        public Stack<PlayerHistory> PlayerHistory { get; private set; }
 
         private Player _activePlayer;
         public Player ActivePlayer { get { return _activePlayer; } private set { _activePlayer = value; ActivePlayerChanged(this, EventArgs.Empty); } }
@@ -29,7 +31,7 @@ namespace Scoring
 
         public void NextActivePlayer()
         {
-            Player next = ActivePlayers.Find((Player i) => { return i.Index == ActivePlayer.Index + 1; });
+            Player next = ActivePlayers.Find((Player i) => { return i.ID == ActivePlayer.ID + 1; });
             ActivePlayer = (next == null) ? player1 : next;
         }
 
@@ -63,6 +65,7 @@ namespace Scoring
                         playerCount.Enabled = false;
                         foreach (GroupBox gb in _groupBoxes)
                             gb.Enabled = true;
+                        PlayerHistory = new Stack<Scoring.PlayerHistory>();
                         break;
                     }
             }
@@ -71,7 +74,9 @@ namespace Scoring
         private void Board_TargetHit(object sender, EventArgs e)
         {
             Board b = sender as Board;
-            switch (ActivePlayer.AddDart(b))
+            PlayerHistory ph;
+            PlayerHistory.Push(ph = new PlayerHistory(ActivePlayer, b)  );
+            switch (ActivePlayer.UpdateHistory(this, ph))
             {
                 case Player.DartReturn.Next:
                 case Player.DartReturn.Dead:
@@ -87,7 +92,7 @@ namespace Scoring
                 if (c.GetType() == typeof(Player))
                 {
                     Player p = c as Player;
-                    int i = p.Index;
+                    int i = p.ID;
                     players[i - 1] = p;
                     p.Text = "Player " + i;
                 }
@@ -141,7 +146,8 @@ namespace Scoring
 
         private void newGame_LostFocus(object sender, EventArgs e)
         {
-            newGame.Text = NEW_GAME;
+            if (newGame.Text == NEW_GAME_CHECK)
+                newGame.Text = NEW_GAME;
         }
 
         private void playerCount_ValueChanged(object sender, EventArgs e)

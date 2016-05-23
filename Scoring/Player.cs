@@ -13,18 +13,18 @@ namespace Scoring
     public partial class Player : UserControl
     {
         public override string Text { get { return name.Text; } set { name.Text = value; } }
-        public int Index { get { return int.Parse(Tag.ToString()); } }
+        public int ID { get; set; }
 
         private enum Difficulty { None, Singles, Doubles };
         public enum DartReturn { OK, Next, Dead, Win }
 
-        private int _darts = 3;
-
-        private ScoreNode _scoreNode;
-        private ScoreNode[] _dartNode = new ScoreNode[3];
-        private ScoreNode _totalNode;
-
+        private int _darts;
+        private int _runningScore;
         public int Score { get; set; }
+        
+        private TreeNode _scoreNode;
+        private TreeNode[] _dartNode = new TreeNode[3];
+        private TreeNode _totalNode;
 
         public Player() {
             InitializeComponent();
@@ -49,8 +49,7 @@ namespace Scoring
                 case Darts.State.InProgress:
                     {
                         Lock();
-                        Score = int.Parse(startScore.SelectedItem.ToString());
-                        Reset();
+                        Setup();
                         break;
                     }
             }
@@ -59,43 +58,64 @@ namespace Scoring
         private void Darts_ActivePlayerChanged(object sender, EventArgs e)
         {
             Darts d = sender as Darts;
-            BackColor = (d.ActivePlayer == this) ? SystemColors.ControlDarkDark : SystemColors.Control;
-            winnerText.ForeColor = (d.ActivePlayer == this) ? SystemColors.ControlLightLight : SystemColors.ControlText;
-            if (d.ActivePlayer == this)
-                Reset();
+            _scoreNode.Text = Score.ToString();
 
-            _darts = 3;
+            if (d.ActivePlayer == this)
+            {
+                BackColor = SystemColors.ControlDarkDark;
+                winnerText.ForeColor = SystemColors.ControlLightLight;
+                _runningScore = 0;
+                _darts = 0;
+            }
+            else
+            {
+                BackColor = SystemColors.Control;
+                winnerText.ForeColor = SystemColors.ControlText;
+                foreach (TreeNode tn in _dartNode)
+                    tn.ForeColor = SystemColors.GrayText;
+            }
         }
 
-        public DartReturn AddDart(Board b)
+        public DartReturn UpdateHistory(Darts d, PlayerHistory ph)
         {
-            _darts--;
-            int multiplier = b.GetMultiplier();
-            int newScore = _scoreNode.Score - (b.Score * multiplier);
+            int newScore = Score - ph.ModifyScore;
 
             if (newScore < 0)
-                return DartReturn.Dead;
-            Difficulty d = GetDifficulty();
-            if (d == Difficulty.Doubles)
             {
-                if (newScore == 1)
-                    return DartReturn.Dead;
-                if (newScore == 0 && multiplier < 2 && b.Score != 50) //not bullseye neither
-                    return DartReturn.Dead;
+                Score += _runningScore;
+                return DartReturn.Dead;
             }
+            Difficulty dif = GetDifficulty();
+            if (dif == Difficulty.Doubles)
+                if (newScore == 1 || newScore == 0 && ph.Multiplier < 2 && ph.ModifyScore != 50) //not bullseye neither
+                {
+                    Score += _runningScore;
+                    return DartReturn.Dead;
+                }
 
             //update score
             Score = newScore;
-            UpdateScoreTree(b.Score, multiplier);
+            _runningScore += ph.ModifyScore;
+            ph.Dart = _darts;
+            UpdateScoreTree(ph);
+            _darts++;
 
             if (newScore == 0)
             {
                 winnerText.Visible = true;
                 return DartReturn.Win;
             }
-            if (_darts > 0)
+            if (_darts < 3)
                 return DartReturn.OK;
             else return DartReturn.Next;
+        }
+
+        private void UpdateScoreTree(PlayerHistory ph)
+        {
+            _scoreNode.Text = Score.ToString();
+            _dartNode[ph.Dart].Text = ph.DartInfo;
+            _dartNode[ph.Dart].ForeColor = SystemColors.WindowText;
+            _totalNode.Text = _runningScore.ToString();
         }
 
         public void Lock(bool b = true)
@@ -105,29 +125,20 @@ namespace Scoring
             difficulty.Enabled = !b;
         }
 
-        private void Reset()
+        private void Setup()
         {
             winnerText.Visible = false;
+            Score = int.Parse(startScore.SelectedItem.ToString());
+
+            //resetTree
             darts.Nodes.Clear();
+            _scoreNode = darts.Nodes.Add(Score.ToString());
+            for (int i = 0; i < 3; i++)
+                _dartNode[i] = _scoreNode.Nodes.Add(string.Empty);
+            _totalNode = _scoreNode.Nodes.Add(string.Empty);
+            //_totalNode.NodeFont = new Font(darts.Font, FontStyle.Bold);
 
-            //reset tree
-            _scoreNode = new ScoreNode(darts.Nodes.Add(string.Empty));
-            _scoreNode.UpdateNode(Score);
-            TreeNode s = _scoreNode.Node;
-            for (int i = 2; i >= 0; i--)
-                _dartNode[i] = new ScoreNode(s.Nodes.Add(string.Empty));
-            _totalNode = new ScoreNode(s.Nodes.Add(string.Empty));
-            s.ExpandAll();
-        }
-
-        private void UpdateScoreTree(int score, int multi)
-        {
-            _scoreNode.UpdateNode(Score);
-            _dartNode[_darts].UpdateNode(score, multi);
-            int t = 0;
-            for (int i = 0; i < _dartNode.Length; i++)
-                t += _dartNode[i].Score;
-            _totalNode.UpdateNode(t);
+            _scoreNode.ExpandAll();
         }
 
         private Difficulty GetDifficulty()
@@ -138,20 +149,6 @@ namespace Scoring
             if (d == Difficulty.Doubles.ToString())
                 return Difficulty.Doubles;
             return Difficulty.None;
-        }
-
-        private class ScoreNode
-        {
-            public ScoreNode(TreeNode node) { Node = node; }
-
-            public TreeNode Node { get; private set; }
-            public int Score { get; private set; }
-
-            public void UpdateNode(int score, int multi = 1)
-            {
-                Score = score * multi;
-                Node.Text = (multi > 1) ? score + " x " + multi : score.ToString();
-            }
         }
     }
 }
