@@ -1,6 +1,6 @@
 ﻿namespace Scoring
 {
-    partial class Board
+    partial class Dart
     {
         /// <summary> 
         /// Required designer variable.

@@ -137,7 +137,6 @@
             this.player6.Location = new System.Drawing.Point(1232, 15);
             this.player6.Margin = new System.Windows.Forms.Padding(5);
             this.player6.Name = "player6";
-            this.player6.Score = 0;
             this.player6.Size = new System.Drawing.Size(200, 185);
             this.player6.TabIndex = 12;
             this.player6.Tag = "6";
@@ -148,7 +147,6 @@
             this.player5.Location = new System.Drawing.Point(1024, 15);
             this.player5.Margin = new System.Windows.Forms.Padding(5);
             this.player5.Name = "player5";
-            this.player5.Score = 0;
             this.player5.Size = new System.Drawing.Size(200, 185);
             this.player5.TabIndex = 11;
             this.player5.Tag = "5";
@@ -159,7 +157,6 @@
             this.player4.Location = new System.Drawing.Point(816, 15);
             this.player4.Margin = new System.Windows.Forms.Padding(5);
             this.player4.Name = "player4";
-            this.player4.Score = 0;
             this.player4.Size = new System.Drawing.Size(200, 185);
             this.player4.TabIndex = 10;
             this.player4.Tag = "4";
@@ -170,7 +167,6 @@
             this.player3.Location = new System.Drawing.Point(608, 15);
             this.player3.Margin = new System.Windows.Forms.Padding(5);
             this.player3.Name = "player3";
-            this.player3.Score = 0;
             this.player3.Size = new System.Drawing.Size(200, 185);
             this.player3.TabIndex = 9;
             this.player3.Tag = "3";
@@ -181,7 +177,6 @@
             this.player2.Location = new System.Drawing.Point(400, 15);
             this.player2.Margin = new System.Windows.Forms.Padding(5);
             this.player2.Name = "player2";
-            this.player2.Score = 0;
             this.player2.Size = new System.Drawing.Size(200, 185);
             this.player2.TabIndex = 8;
             this.player2.Tag = "2";
@@ -192,7 +187,6 @@
             this.player1.Location = new System.Drawing.Point(192, 15);
             this.player1.Margin = new System.Windows.Forms.Padding(5);
             this.player1.Name = "player1";
-            this.player1.Score = 0;
             this.player1.Size = new System.Drawing.Size(200, 185);
             this.player1.TabIndex = 0;
             this.player1.Tag = "";

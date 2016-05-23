@@ -10,17 +10,20 @@ using System.Windows.Forms;
 
 namespace Scoring
 {
-    public partial class Board : UserControl
+    public partial class Dart : UserControl
     {
         public enum ScoreType { Single, Double, Triple, Other };
         public enum OtherType { Bullseye, Single_Bull, Miss};
 
+        public static Dart Skip = null;
+
         public int Score { get; }
+        public int TotalScore { get { return Score * GetMultiplier(); } }
         public ScoreType Type { get; }
 
         public static event EventHandler TargetHit;
 
-        public Board(GroupBox gp, int score, ScoreType type)
+        public Dart(GroupBox gp, int score, ScoreType type)
         {
             InitializeComponent();
 
@@ -31,7 +34,7 @@ namespace Scoring
             addToGroupBox(gp);
         }
 
-        public Board(GroupBox gp, OtherType ot)
+        public Dart(GroupBox gp, OtherType ot)
         {
             InitializeComponent();
 

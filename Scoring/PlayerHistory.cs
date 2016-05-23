@@ -8,19 +8,48 @@ namespace Scoring
 {
     public class PlayerHistory
     {
-        public PlayerHistory(Player p, Board d)
+        public Dictionary<Player, int> PlayerScore { get; private set; }
+        public Dictionary<Player, List<Dart>> PlayerDarts { get; private set; }
+        public Player ActivePlayer { get; private set; }
+        
+        /// <summary>
+        /// OK, NEXT or WIN
+        /// </summary>
+        public PlayerHistory(PlayerHistory previous, Dart d, Player newActivePlayer = null)
         {
-            ActivePlayer = p;
-            DartInfo = d.GetMultiplier() + " x " + d.Score;
-            Multiplier = d.GetMultiplier();
-            ModifyScore = d.Score * Multiplier;
+            ActivePlayer = (newActivePlayer == null) ? previous.ActivePlayer : newActivePlayer;
+
+            PlayerScore = new Dictionary<Player, int>(previous.PlayerScore);
+            PlayerScore[previous.ActivePlayer] -= d.TotalScore;
+            PlayerDarts = new Dictionary<Player, List<Dart>>(PlayerDarts);
+            PlayerDarts[previous.ActivePlayer].Add(d);
         }
 
-        public Player ActivePlayer { get; private set; }
-        public string DartInfo { get; private set; }
-        public int ModifyScore { get; private set; }
-        public int Multiplier { get; private set; }
+        /// <summary>
+        /// DEAD
+        /// </summary>
+        public PlayerHistory(PlayerHistory previous, Player newActivePlayer)
+        {
+            PlayerScore = new Dictionary<Player, int>(previous.PlayerScore);
+            PlayerDarts = new Dictionary<Player, List<Dart>>(PlayerDarts);
+            foreach (Dart pd in PlayerDarts[previous.ActivePlayer])
+                PlayerScore[previous.ActivePlayer] += pd.TotalScore;
+        }
 
-        public int Dart { get; set; }
+        /// <summary>
+        /// Initialize
+        /// </summary>
+        public PlayerHistory(Darts d)
+        {
+            ActivePlayer = d.ActivePlayer;
+
+            PlayerScore = new Dictionary<Player, int>();
+            PlayerDarts = new Dictionary<Player, List<Dart>>();
+            foreach (Player p in d.ActivePlayers)
+            {
+                PlayerScore.Add(p, p.StartingScore);
+                PlayerDarts.Add(p, new List<Dart>());
+            }
+        }
     }
 }

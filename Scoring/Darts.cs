@@ -41,7 +41,7 @@ namespace Scoring
             initPlayers();
             setupBoard();
 
-            Board.TargetHit += Board_TargetHit;
+            Dart.TargetHit += Board_TargetHit;
             GameStateChanged += Darts_GameStateChanged;
             GameState = State.Configure;
 
@@ -66,6 +66,7 @@ namespace Scoring
                         foreach (GroupBox gb in _groupBoxes)
                             gb.Enabled = true;
                         PlayerHistory = new Stack<Scoring.PlayerHistory>();
+                        PlayerHistory.Push(new Scoring.PlayerHistory(this));
                         break;
                     }
             }
@@ -73,16 +74,26 @@ namespace Scoring
 
         private void Board_TargetHit(object sender, EventArgs e)
         {
-            Board b = sender as Board;
-            PlayerHistory ph;
-            PlayerHistory.Push(ph = new PlayerHistory(ActivePlayer, b)  );
-            switch (ActivePlayer.UpdateHistory(this, ph))
+            Dart b = sender as Dart;
+            PlayerHistory prev = PlayerHistory.Peek();
+
+            switch (ActivePlayer.DartResponse(prev, b))
             {
                 case Player.DartReturn.Next:
+                    NextActivePlayer();
+                    PlayerHistory.Push(new Scoring.PlayerHistory(prev, b, ActivePlayer));
+                    break;
                 case Player.DartReturn.Dead:
-                    NextActivePlayer(); break;
+                    NextActivePlayer();
+                    PlayerHistory.Push(new Scoring.PlayerHistory(prev, ActivePlayer));
+                    break;
                 case Player.DartReturn.Win:
-                    GameState = State.Configure; break;                    
+                    PlayerHistory.Push(new Scoring.PlayerHistory(prev, b));
+                    GameState = State.Configure;
+                    break;
+                case Player.DartReturn.OK:
+                    PlayerHistory.Push(new Scoring.PlayerHistory(prev, b));
+                    break;
             }
         }
 
@@ -102,18 +113,18 @@ namespace Scoring
         private void setupBoard()
         {
             GroupBox[] gps = new GroupBox[3] { singles, doubles, triples };
-            Board.ScoreType[] sts = new Board.ScoreType[3] { Board.ScoreType.Single, Board.ScoreType.Double, Board.ScoreType.Triple };
+            Dart.ScoreType[] sts = new Dart.ScoreType[3] { Dart.ScoreType.Single, Dart.ScoreType.Double, Dart.ScoreType.Triple };
             for (int g = 0; g < gps.Length; g++)
             {
                 gps[g].Text = sts[g].ToString();
                 for (int i = 1; i <= 20; i++)
-                    new Board(gps[g], i, sts[g]);
+                    new Dart(gps[g], i, sts[g]);
                 _groupBoxes.Add(gps[g]);
             }
                         
-            new Board(other, Board.OtherType.Miss);
-            new Board(other, Board.OtherType.Single_Bull);
-            new Board(other, Board.OtherType.Bullseye);
+            new Dart(other, Dart.OtherType.Miss);
+            new Dart(other, Dart.OtherType.Single_Bull);
+            new Dart(other, Dart.OtherType.Bullseye);
             _groupBoxes.Add(other);
         }
 
