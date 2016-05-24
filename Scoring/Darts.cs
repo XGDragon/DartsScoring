@@ -6,10 +6,11 @@ namespace Scoring
 {
     public partial class Darts : Form
     {
+        private const string END_GAME = "End Game";
         private const string NEW_GAME = "New Game";
         private const string NEW_GAME_START = "Start";
         private const string NEW_GAME_CHECK = "Are you sure?";
-        private const int MAX_PLAYERS = 6;
+        private const int MAX_PLAYERS = 7;
 
         public enum State { Configure, InProgress };
         private State _gameState;
@@ -18,8 +19,6 @@ namespace Scoring
         private Player[] players = new Player[MAX_PLAYERS];
         private List<Player> _activePlayers = new List<Player>();
         public List<Player> ActivePlayers { get { return _activePlayers; } }
-        
-        public Stack<PlayerHistory> PlayerHistory { get; private set; }
 
         private Player _activePlayer;
         public Player ActivePlayer { get { return _activePlayer; } private set { _activePlayer = value; ActivePlayerChanged(this, EventArgs.Empty); } }
@@ -33,6 +32,12 @@ namespace Scoring
         {
             Player next = ActivePlayers.Find((Player i) => { return i.ID == ActivePlayer.ID + 1; });
             ActivePlayer = (next == null) ? player1 : next;
+        }
+
+        public void PreviousActivePlayer()
+        {
+            Player previous = ActivePlayers.Find((Player i) => { return i.ID == ActivePlayer.ID - 1; });
+            ActivePlayer = (previous == null) ? ActivePlayers[ActivePlayers.Count - 1] : previous;
         }
 
         public Darts()
@@ -56,43 +61,47 @@ namespace Scoring
                 case State.Configure:
                     {
                         playerCount.Enabled = true;
-                        foreach (GroupBox gb in _groupBoxes)
-                            gb.Enabled = false;
+                        EnableGroupBoxes(false);
+
+                        newGame.Text = NEW_GAME_START;
                         break;
                     }
                 case State.InProgress:
                     {
                         playerCount.Enabled = false;
-                        foreach (GroupBox gb in _groupBoxes)
-                            gb.Enabled = true;
-                        PlayerHistory = new Stack<Scoring.PlayerHistory>();
-                        PlayerHistory.Push(new Scoring.PlayerHistory(this));
+                        EnableGroupBoxes();
+                         ActivePlayer = player1;
+                        
+                        newGame.Text = NEW_GAME;
                         break;
                     }
             }
         }
 
+        private void EnableGroupBoxes(bool enable = true)
+        {
+            foreach (GroupBox gb in _groupBoxes)
+                gb.Enabled = enable;
+        }
+
         private void Board_TargetHit(object sender, EventArgs e)
         {
-            Dart b = sender as Dart;
-            PlayerHistory prev = PlayerHistory.Peek();
+            Dart d = sender as Dart;
 
-            switch (ActivePlayer.DartResponse(prev, b))
+            PlayerHistory ph = new PlayerHistory(ActivePlayer, ActivePlayer.History.Peek(), d);
+            ActivePlayer.History.Push(ph);
+            ActivePlayer.UpdateScoreTree();
+
+            switch (ph.Response)
             {
                 case Player.DartReturn.Next:
-                    NextActivePlayer();
-                    PlayerHistory.Push(new Scoring.PlayerHistory(prev, b, ActivePlayer));
-                    break;
                 case Player.DartReturn.Dead:
                     NextActivePlayer();
-                    PlayerHistory.Push(new Scoring.PlayerHistory(prev, ActivePlayer));
                     break;
                 case Player.DartReturn.Win:
-                    PlayerHistory.Push(new Scoring.PlayerHistory(prev, b));
-                    GameState = State.Configure;
-                    break;
-                case Player.DartReturn.OK:
-                    PlayerHistory.Push(new Scoring.PlayerHistory(prev, b));
+                    ActivePlayer.ShowWin();
+                    EnableGroupBoxes(false);
+                    newGame.Text = END_GAME;
                     break;
             }
         }
@@ -121,10 +130,9 @@ namespace Scoring
                     new Dart(gps[g], i, sts[g]);
                 _groupBoxes.Add(gps[g]);
             }
-                        
-            new Dart(other, Dart.OtherType.Miss);
-            new Dart(other, Dart.OtherType.Single_Bull);
-            new Dart(other, Dart.OtherType.Bullseye);
+
+            for (int i = 0; i < 3; i++)
+                new Dart(other, i * 25, Dart.ScoreType.Other);
             _groupBoxes.Add(other);
         }
 
@@ -133,26 +141,9 @@ namespace Scoring
             if (newGame.Text == NEW_GAME)
                 newGame.Text = NEW_GAME_CHECK;
             else if (newGame.Text == NEW_GAME_START)
-            {
-                //start the game
-                //readonly?!
-                playerCount.Enabled = false;
                 GameState = State.InProgress;
-                ActivePlayer = player1;
-
-                newGame.Text = NEW_GAME;
-            }
-            else
-            {
-                //allow settings for the new game
-                playerCount.Enabled = true;
+            else//END_GAME or NEW_GAME_CHECK
                 GameState = State.Configure;
-                foreach (GroupBox gb in _groupBoxes)
-                    gb.Enabled = true;
-                ActivePlayer = null;
-
-                newGame.Text = NEW_GAME_START;
-            }
         }
 
         private void newGame_LostFocus(object sender, EventArgs e)
@@ -173,6 +164,26 @@ namespace Scoring
                     ActivePlayers.Add(players[i]);
                 }
                 else players[i].Visible = false;
+        }
+
+        private void Undo_Click(object sender, EventArgs e)
+        {
+            if (ActivePlayer == player1 && player1.History.Count <= 1)
+                return;
+
+            Player.DartReturn dr = ActivePlayer.History.Peek().Response;
+            if (dr == Player.DartReturn.Dead || dr == Player.DartReturn.Next)
+                PreviousActivePlayer();
+
+            ActivePlayer.History.Pop();
+            ActivePlayer.UpdateScoreTree();
+
+            if (dr == Player.DartReturn.Win)
+            {
+                EnableGroupBoxes();
+                ActivePlayer.ShowWin(false);
+                newGame.Text = NEW_GAME;
+            }
         }
     }
 }
