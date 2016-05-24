@@ -9,7 +9,7 @@ namespace Scoring
         private const string NEW_GAME = "New Game";
         private const string NEW_GAME_START = "Start";
         private const string NEW_GAME_CHECK = "Are you sure?";
-        private const int MAX_PLAYERS = 6;
+        private const int MAX_PLAYERS = 7;
 
         public enum State { Configure, InProgress };
         private State _gameState;
@@ -19,7 +19,7 @@ namespace Scoring
         private List<Player> _activePlayers = new List<Player>();
         public List<Player> ActivePlayers { get { return _activePlayers; } }
         
-        public Stack<PlayerHistory> PlayerHistory { get; private set; }
+        public Stack<PlayerHistory> PlayerHistories { get; private set; }
 
         private Player _activePlayer;
         public Player ActivePlayer { get { return _activePlayer; } private set { _activePlayer = value; ActivePlayerChanged(this, EventArgs.Empty); } }
@@ -58,6 +58,9 @@ namespace Scoring
                         playerCount.Enabled = true;
                         foreach (GroupBox gb in _groupBoxes)
                             gb.Enabled = false;
+
+                        ActivePlayer = null;
+                        newGame.Text = NEW_GAME_START;
                         break;
                     }
                 case State.InProgress:
@@ -65,8 +68,12 @@ namespace Scoring
                         playerCount.Enabled = false;
                         foreach (GroupBox gb in _groupBoxes)
                             gb.Enabled = true;
-                        PlayerHistory = new Stack<Scoring.PlayerHistory>();
-                        PlayerHistory.Push(new Scoring.PlayerHistory(this));
+                        ActivePlayer = player1;
+
+                        PlayerHistories = new Stack<Scoring.PlayerHistory>();
+                        PlayerHistories.Push(new Scoring.PlayerHistory(ActivePlayers, ActivePlayer));
+
+                        newGame.Text = NEW_GAME;
                         break;
                     }
             }
@@ -74,26 +81,27 @@ namespace Scoring
 
         private void Board_TargetHit(object sender, EventArgs e)
         {
-            Dart b = sender as Dart;
-            PlayerHistory prev = PlayerHistory.Peek();
+            Dart d = sender as Dart;
 
-            switch (ActivePlayer.DartResponse(prev, b))
+            PlayerHistory ph = new Scoring.PlayerHistory(PlayerHistories.Peek(), ActivePlayer, d);
+            PlayerHistories.Push(ph);
+            ActivePlayer.UpdateScoreTree(ph);
+
+            switch (ph.Response)
             {
                 case Player.DartReturn.Next:
-                    NextActivePlayer();
-                    PlayerHistory.Push(new Scoring.PlayerHistory(prev, b, ActivePlayer));
-                    break;
                 case Player.DartReturn.Dead:
                     NextActivePlayer();
-                    PlayerHistory.Push(new Scoring.PlayerHistory(prev, ActivePlayer));
                     break;
                 case Player.DartReturn.Win:
-                    PlayerHistory.Push(new Scoring.PlayerHistory(prev, b));
+                    ActivePlayer.ShowWin();
                     GameState = State.Configure;
                     break;
-                case Player.DartReturn.OK:
-                    PlayerHistory.Push(new Scoring.PlayerHistory(prev, b));
-                    break;
+            }
+
+            if (PlayerHistories.Count == 6)
+            {
+                int dty = 0;
             }
         }
 
@@ -121,10 +129,9 @@ namespace Scoring
                     new Dart(gps[g], i, sts[g]);
                 _groupBoxes.Add(gps[g]);
             }
-                        
-            new Dart(other, Dart.OtherType.Miss);
-            new Dart(other, Dart.OtherType.Single_Bull);
-            new Dart(other, Dart.OtherType.Bullseye);
+
+            for (int i = 0; i < 3; i++)
+                new Dart(other, i * 25, Dart.ScoreType.Other);
             _groupBoxes.Add(other);
         }
 
@@ -133,26 +140,9 @@ namespace Scoring
             if (newGame.Text == NEW_GAME)
                 newGame.Text = NEW_GAME_CHECK;
             else if (newGame.Text == NEW_GAME_START)
-            {
-                //start the game
-                //readonly?!
-                playerCount.Enabled = false;
                 GameState = State.InProgress;
-                ActivePlayer = player1;
-
-                newGame.Text = NEW_GAME;
-            }
             else
-            {
-                //allow settings for the new game
-                playerCount.Enabled = true;
                 GameState = State.Configure;
-                foreach (GroupBox gb in _groupBoxes)
-                    gb.Enabled = true;
-                ActivePlayer = null;
-
-                newGame.Text = NEW_GAME_START;
-            }
         }
 
         private void newGame_LostFocus(object sender, EventArgs e)
@@ -173,6 +163,26 @@ namespace Scoring
                     ActivePlayers.Add(players[i]);
                 }
                 else players[i].Visible = false;
+        }
+
+        private void Undo_Click(object sender, EventArgs e)
+        {
+            if (PlayerHistories.Count > 1)
+            {
+                PlayerHistories.Pop();
+                PlayerHistory ph = PlayerHistories.Peek();
+
+                if (ph.Response == Player.DartReturn.OK)
+                {
+                    ActivePlayer = ph.Player;
+                    PlayerHistory.Scores[ActivePlayer] = ph.Score;
+                    ActivePlayer.UpdateScoreTree(ph);
+                }
+                else
+                {
+
+                }
+            }
         }
     }
 }

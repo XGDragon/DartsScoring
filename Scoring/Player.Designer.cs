@@ -100,7 +100,7 @@
             this.Controls.Add(this.difficulty);
             this.Controls.Add(this.name);
             this.Name = "Player";
-            this.Size = new System.Drawing.Size(150, 169);
+            this.Size = new System.Drawing.Size(150, 170);
             this.ResumeLayout(false);
             this.PerformLayout();
 

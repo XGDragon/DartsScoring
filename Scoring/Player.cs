@@ -16,7 +16,7 @@ namespace Scoring
         public int ID { get; set; }
         public int StartingScore { get { return int.Parse(startScore.SelectedItem.ToString()); } }
 
-        private enum Difficulty { None, Singles, Doubles };
+        public enum Difficulty { None, Singles, Doubles };
         public enum DartReturn { OK, Next, Dead, Win }
         
         private TreeNode _scoreNode;
@@ -56,55 +56,43 @@ namespace Scoring
         {
             Darts d = sender as Darts;
 
-            if (d.ActivePlayer == this)
-            {
-                BackColor = SystemColors.ControlDarkDark;
-                winnerText.ForeColor = SystemColors.ControlLightLight;
-            }
-            else
-            {
-                BackColor = SystemColors.Control;
-                winnerText.ForeColor = SystemColors.ControlText;
-                foreach (TreeNode tn in _dartNode)
-                    tn.ForeColor = SystemColors.GrayText;
-            }
+            if (d.ActivePlayer != null)
+                if (d.ActivePlayer == this)
+                {
+                    BackColor = SystemColors.ControlDarkDark;
+                    winnerText.ForeColor = SystemColors.ControlLightLight;
+                }
+                else
+                {
+                    BackColor = SystemColors.Control;
+                    winnerText.ForeColor = SystemColors.ControlText;
+                    foreach (TreeNode tn in _dartNode)
+                        tn.ForeColor = SystemColors.GrayText;
+                }
         }
 
-        public DartReturn DartResponse(PlayerHistory ph, Dart dart)
+        public void ShowWin()
         {
-            int newScore = ph.PlayerScore[this] - dart.TotalScore;
-
-            Difficulty dif = GetDifficulty();
-            if (newScore < 0)
-                return DartReturn.Dead;
-            if (dif == Difficulty.Doubles)
-                if (newScore == 1 || newScore == 0 && dart.GetMultiplier() < 2 && dart.Score != 50) //not bullseye neither
-                    return DartReturn.Dead;
-            
-            if (newScore == 0)
-            {
-                winnerText.Visible = true;
-                return DartReturn.Win;
-            }
-            if (ph.PlayerDarts[this].Count < 2)
-                return DartReturn.OK;
-            else return DartReturn.Next;
+            winnerText.Visible = true;
         }
-      
 
-        private void UpdateScoreTree(PlayerHistory ph)
+        public void UpdateScoreTree(PlayerHistory ph)
         {
-            _scoreNode.Text = ph.PlayerScore[this].ToString();
-            int a = ph.PlayerDarts[this].Count;
-            int t = 0;
-            for (int i = 0; i < 3; i++)
-            {
-                int score = (a > i) ? ph.PlayerDarts[this][i].TotalScore : 0;
-                _dartNode[i].Text = (a > i) ? string.Empty : score.ToString();
-                t += score;
-            }
-            //_dartNode[ph.Dart].ForeColor = SystemColors.WindowText;
-            _totalNode.Text = t.ToString();
+            _scoreNode.Text = PlayerHistory.Scores[this].ToString();
+
+            List<PlayerHistory> phs = ph.HistoryGroup();
+            phs.Reverse();
+
+            for (int i = 0; i < ph.Dart; i++)
+                _dartNode[i].Text = phs[i].DartInfo;
+
+            _dartNode[ph.Dart].Text = ph.DartInfo;
+
+            for (int i = ph.Dart + 1; i < _dartNode.Length; i++)
+                _dartNode[i].Text = string.Empty;
+
+            _dartNode[ph.Dart].ForeColor = SystemColors.WindowText;
+            _totalNode.Text = ph.RunningScore.ToString();
         }
 
         public void Lock(bool b = true)
@@ -120,16 +108,16 @@ namespace Scoring
 
             //resetTree
             darts.Nodes.Clear();
-            _scoreNode = darts.Nodes.Add("todo");
+            _scoreNode = darts.Nodes.Add(StartingScore.ToString());
             for (int i = 0; i < 3; i++)
                 _dartNode[i] = _scoreNode.Nodes.Add(string.Empty);
             _totalNode = _scoreNode.Nodes.Add(string.Empty);
-            //_totalNode.NodeFont = new Font(darts.Font, FontStyle.Bold);
+            _totalNode.NodeFont = new Font(darts.Font, FontStyle.Bold);
 
             _scoreNode.ExpandAll();
         }
 
-        private Difficulty GetDifficulty()
+        public Difficulty GetDifficulty()
         {
             string d = difficulty.SelectedItem.ToString();
             if (d == Difficulty.Singles.ToString())
