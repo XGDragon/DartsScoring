@@ -18,6 +18,8 @@ namespace Scoring
 
         public enum Difficulty { None, Singles, Doubles };
         public enum DartReturn { OK, Next, Dead, Win }
+
+        public Stack<PlayerHistory> History { get; private set; }
         
         private TreeNode _scoreNode;
         private TreeNode[] _dartNode = new TreeNode[3];
@@ -55,44 +57,41 @@ namespace Scoring
         private void Darts_ActivePlayerChanged(object sender, EventArgs e)
         {
             Darts d = sender as Darts;
-
-            if (d.ActivePlayer != null)
-                if (d.ActivePlayer == this)
-                {
-                    BackColor = SystemColors.ControlDarkDark;
-                    winnerText.ForeColor = SystemColors.ControlLightLight;
-                }
-                else
-                {
-                    BackColor = SystemColors.Control;
-                    winnerText.ForeColor = SystemColors.ControlText;
-                    foreach (TreeNode tn in _dartNode)
-                        tn.ForeColor = SystemColors.GrayText;
-                }
+            
+            if (d.ActivePlayer == this)
+            {
+                BackColor = SystemColors.ControlDarkDark;
+                foreach (TreeNode tn in _dartNode)
+                    tn.ForeColor = SystemColors.ControlText;
+                _totalNode.ForeColor = SystemColors.ControlText;
+            }
+            else
+            {
+                BackColor = SystemColors.Control;
+                foreach (TreeNode tn in _dartNode)
+                    tn.ForeColor = SystemColors.GrayText;
+                _totalNode.ForeColor = SystemColors.GrayText;
+            }
         }
 
-        public void ShowWin()
+        public void ShowWin(bool show = true)
         {
-            winnerText.Visible = true;
+            winnerText.Visible = show;
         }
 
-        public void UpdateScoreTree(PlayerHistory ph)
+        public void UpdateScoreTree()
         {
-            _scoreNode.Text = PlayerHistory.Scores[this].ToString();
+            PlayerHistory ph = History.Peek();
+            _scoreNode.Text = ph.Score.ToString();
 
-            List<PlayerHistory> phs = ph.HistoryGroup();
-            phs.Reverse();
-
-            for (int i = 0; i < ph.Dart; i++)
-                _dartNode[i].Text = phs[i].DartInfo;
-
-            _dartNode[ph.Dart].Text = ph.DartInfo;
-
-            for (int i = ph.Dart + 1; i < _dartNode.Length; i++)
-                _dartNode[i].Text = string.Empty;
-
-            _dartNode[ph.Dart].ForeColor = SystemColors.WindowText;
-            _totalNode.Text = ph.RunningScore.ToString();
+            int t = 0;
+            for (int i = 0; i < _dartNode.Length; i++)
+            {
+                PlayerHistory h = (i < ph.Dart) ? ph.HistoryGroup[i] : ph;
+                _dartNode[i].Text = (i <= ph.Dart) ? h.DartInfo : string.Empty;
+                t += (i <= ph.Dart) ? h.DartScore : 0;
+            }
+            _totalNode.Text = t.ToString();
         }
 
         public void Lock(bool b = true)
@@ -105,6 +104,8 @@ namespace Scoring
         private void Setup()
         {
             winnerText.Visible = false;
+            History = new Stack<PlayerHistory>();
+            History.Push(new PlayerHistory(this));
 
             //resetTree
             darts.Nodes.Clear();

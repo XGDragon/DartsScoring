@@ -7,75 +7,72 @@ namespace Scoring
 {
     public class PlayerHistory
     {
-        private PlayerHistory _previous;
-        private long _turn;
-        private Dart _dart;
-        public static Dictionary<Player, int> Scores = new Dictionary<Player, int>();
-
-        public Player Player { get; private set; }
-        public int Dart { get; private set; }
-        public string DartInfo { get; private set; }
         public int Score { get; private set; }
-        public int RunningScore { get; private set; }
+        public int Dart { get; private set; }
         public DartReturn Response { get; private set; }
 
-        public PlayerHistory(List<Player> players, Player start)
+        public DartReturn PreviousResponse { get { return _prev.Response; } }
+        public string DartInfo { get { return _dart.Info; } }
+        public int DartScore { get { return _dart.TotalScore; } }
+        public PlayerHistory[] HistoryGroup { get { return _historyGroup.ToArray(); } }
+
+        private List<PlayerHistory> _historyGroup;
+        private Dart _dart;
+        private int _turn = 0;
+        private Player _player;
+        private PlayerHistory _prev;
+
+        public PlayerHistory(Player p)
         {
-            Scores.Clear();
-            foreach (Player p in players)
-                Scores.Add(p, p.StartingScore);
-            _turn = 0;
-            Player = start;
-            Score = start.StartingScore;
+            Score = p.StartingScore;
+            Dart = -1;
             Response = DartReturn.Dead;
+            _dart = new Scoring.Dart(new System.Windows.Forms.GroupBox(), 0, Scoring.Dart.ScoreType.Other);
         }
-        
-        public PlayerHistory(PlayerHistory prev, Player current, Dart dart)
+
+        public PlayerHistory(Player p, PlayerHistory prev, Dart dart)
         {
-            _previous = prev;
-            if (_previous.Response == DartReturn.Dead || _previous.Response == DartReturn.Next)
-                _turn = _previous._turn + 1;
-            else _turn = _previous._turn;
+            _player = p;
             _dart = dart;
+            _prev = prev;
+            bool dn = (_prev.Response == DartReturn.Dead || _prev.Response == DartReturn.Next);
 
-            Player = current;
-            DartInfo = dart.Info;
-
-            RunningScore = 0;
-            Dart = 0;
-            foreach (PlayerHistory p in HistoryGroup())
-            {
-                RunningScore += p._dart.TotalScore;
-                Dart++;
-            }
-
+            Dart = (dn) ? 0 : _prev.Dart + 1;
             Response = DartResponse();
-            if (Response == DartReturn.Dead)
-                Scores[current] += RunningScore;
-            else
-                Scores[current] -= _dart.TotalScore;
 
-            Score = Scores[current];
-            RunningScore += _dart.TotalScore;
+            _turn = _prev._turn;
+            if (dn)
+                _turn++;
+            _historyGroup = GetHistoryGroup();   
+                     
+            if (Response == DartReturn.Dead)
+            {
+                PlayerHistory ph = _prev;
+                while (_turn == ph._turn)
+                    ph = ph._prev;
+                Score = ph.Score;
+            }
+            else Score = _prev.Score - _dart.TotalScore;
         }
 
-        public List<PlayerHistory> HistoryGroup()
+        private List<PlayerHistory> GetHistoryGroup()
         {
             List<PlayerHistory> phs = new List<PlayerHistory>();
-            PlayerHistory pp = _previous;
-            while (pp != null && pp._turn == _turn)
-            { 
-                phs.Add(pp);
-                pp = pp._previous;
-            }            
+            PlayerHistory ph = _prev;
+            while (_turn == ph._turn)
+            {
+                phs.Add(ph);
+                ph = ph._prev;
+            }
+            phs.Reverse();
             return phs;
         }
 
         private DartReturn DartResponse()
         {
-            int newScore = Scores[Player] - _dart.TotalScore;
+            int newScore = _prev.Score - _dart.TotalScore;
 
-            Difficulty dif = Player.GetDifficulty();
+            Difficulty dif = _player.GetDifficulty();
             if (newScore < 0)
                 return DartReturn.Dead;
             if (dif == Difficulty.Doubles)
